@@ -2,7 +2,14 @@
 // Core domain types for WebShark Data Studio.
 // ---------------------------------------------------------------------------
 
-export type CellType = 'sql' | 'python' | 'markdown' | 'chart' | 'profile' | 'stress'
+export type CellType =
+  | 'sql'
+  | 'python'
+  | 'markdown'
+  | 'chart'
+  | 'profile'
+  | 'stress'
+  | 'model'
 
 export type CellStatus = 'idle' | 'stale' | 'running' | 'ok' | 'error'
 
@@ -29,6 +36,8 @@ export interface CellOutput {
   profile?: unknown
   /** StressResult[] for stress cells (see engine/stress.ts). */
   stress?: unknown
+  /** ModelResult for model cells (see engine/model.ts). */
+  model?: unknown
   /** Error message, if the run failed. */
   error?: string
   /** Wall-clock duration of the last run, ms. */
@@ -47,6 +56,14 @@ export interface ChartSpec {
   yType?: 'auto' | 'quantitative' | 'nominal' | 'ordinal' | 'temporal'
 }
 
+export interface ModelSpec {
+  table: string
+  target?: string
+  /** Empty/undefined ⇒ all columns except the target. */
+  features?: string[]
+  algo: 'linear' | 'tree' | 'forest'
+}
+
 export interface Cell {
   id: string
   type: CellType
@@ -60,6 +77,8 @@ export interface Cell {
   profileTarget?: string
   /** Stress-test configuration for stress cells. */
   stressTarget?: { cellId?: string }
+  /** Model configuration for model cells. */
+  model?: ModelSpec
   status: CellStatus
   output?: CellOutput
   /** Whether the editor is collapsed. */

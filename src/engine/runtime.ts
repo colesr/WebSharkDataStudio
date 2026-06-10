@@ -19,7 +19,7 @@ import {
 import { profileColumns } from './semantic'
 import { profileTable } from './profile'
 import { buildVegaSpec } from './chartspec'
-import { runPython, resetPython, onPythonLoad } from './python'
+import { runPython, runModel, resetPython, onPythonLoad } from './python'
 import { downstreamOf, topoOrder, cellDeps, pythonWrites } from './dag'
 import { reloadSources, listSources } from './sources'
 import { STRESS_ATTACKS, type StressResult } from './stress'
@@ -197,6 +197,24 @@ async function executeCell(cell: Cell): Promise<void> {
     if (cell.type === 'stress') {
       const results = await runStress(cell)
       setCellOutput(cell.id, { stress: results, durationMs: performance.now() - t0 })
+      setCellStatus(cell.id, 'ok')
+      return
+    }
+
+    if (cell.type === 'model') {
+      const spec = cell.model
+      if (!spec?.table || !spec.target) {
+        setCellStatus(cell.id, 'idle')
+        return
+      }
+      const result = await runModel({
+        table: spec.table,
+        target: spec.target,
+        features: spec.features ?? [],
+        algo: spec.algo,
+        seed: project.seed,
+      })
+      setCellOutput(cell.id, { model: result, durationMs: performance.now() - t0 })
       setCellStatus(cell.id, 'ok')
       return
     }

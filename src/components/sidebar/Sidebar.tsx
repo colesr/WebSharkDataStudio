@@ -241,7 +241,9 @@ function Outline() {
             ? '📊'
             : t === 'stress'
               ? '⚡'
-              : '🔍'
+              : t === 'model'
+                ? '🧪'
+                : '🔍'
 
   return (
     <div style={{ marginTop: 8, borderTop: '1px solid var(--border-soft)' }}>

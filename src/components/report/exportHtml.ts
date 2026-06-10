@@ -13,6 +13,7 @@ import { downloadText } from '../../engine/persistence'
 import type { Cell, TablePreview } from '../../types'
 import type { TableProfile } from '../../engine/profile'
 import type { StressResult } from '../../engine/stress'
+import type { ModelResult } from '../../engine/model'
 
 function esc(s: unknown): string {
   return String(s ?? '')
@@ -72,6 +73,28 @@ function cellHtml(cell: Cell, chartId: { n: number }, specs: string[]): string {
   }
   if (cell.type === 'profile' && cell.output?.profile) {
     return `<div class="block">${profileHtml(cell.output.profile as TableProfile)}</div>`
+  }
+  if (cell.type === 'model' && cell.output?.model) {
+    const m = cell.output.model as ModelResult
+    const pm = m.primaryMetric
+    const isClass = m.task === 'classification'
+    const f = (v: number) => (isClass ? `${(v * 100).toFixed(1)}%` : v.toFixed(3))
+    const gate = m.beatsBaseline
+      ? `<span style="color:#2a9d4a">✓ beats baseline</span>`
+      : `<span style="color:#d1242f">✕ does not beat baseline</span>`
+    const leak = m.leakage.length
+      ? `<div style="color:#b8860b">▲ ${m.leakage.map((l) => `${esc(l.feature)} (${esc(l.reason)})`).join('; ')}</div>`
+      : ''
+    const stress = m.stress
+      .map((s) => `<tr><td>${esc(s.name)}</td><td>${s.metric == null ? '—' : f(s.metric)}</td></tr>`)
+      .join('')
+    return `<div class="block"><div class="cap">Model — ${esc(m.task)} · ${esc(m.algo)}</div>
+      <div style="font-size:15px"><b>${esc(pm.name)} ${f(pm.model)}</b> (baseline ${f(
+        pm.baseline,
+      )}) &nbsp; ${gate}</div>${leak}
+      <div class="tbl-wrap" style="margin-top:8px"><table class="tbl"><thead><tr><th>perturbation</th><th>${esc(
+        pm.name,
+      )}</th></tr></thead><tbody>${stress}</tbody></table></div></div>`
   }
   if (cell.type === 'stress' && cell.output?.stress) {
     const results = cell.output.stress as StressResult[]

@@ -16,6 +16,7 @@
 // ---------------------------------------------------------------------------
 
 import { loadCsvText, tableToCsv } from './duck'
+import { MODEL_SCRIPT, type ModelResult } from './model'
 
 const PYODIDE_VERSION = 'v0.26.4'
 const PYODIDE_INDEX = `https://cdn.jsdelivr.net/pyodide/${PYODIDE_VERSION}/full/`
@@ -209,6 +210,44 @@ except Exception:
     image,
     publishedTables: published,
   }
+}
+
+let sklearnLoaded = false
+async function ensureSklearn(): Promise<void> {
+  if (sklearnLoaded) return
+  const pyodide = await getPyodide()
+  notify('Loading scikit-learn…')
+  await pyodide.loadPackage(['scikit-learn'])
+  sklearnLoaded = true
+  notify('Python ready')
+}
+
+/**
+ * Train + evaluate a model in scikit-learn. `cfg` carries the table, target,
+ * feature list, algorithm and seed. Returns the structured ModelResult.
+ */
+export async function runModel(cfg: {
+  table: string
+  target: string
+  features: string[]
+  algo: string
+  seed: number
+}): Promise<ModelResult> {
+  const pyodide = await getPyodide()
+  await ensureSklearn()
+  stdoutBuffer = []
+
+  // Make the input table readable via ws.table inside the script.
+  const inputs = new Map<string, string>()
+  inputs.set(cfg.table, await tableToCsv(cfg.table))
+  pyodide.globals.set('_ws_inputs', inputs)
+  pyodide.globals.set('_model_cfg', pyodide.toPy(cfg))
+
+  await pyodide.runPythonAsync(MODEL_SCRIPT)
+  const out = pyodide.globals.get('_result')
+  const js = out.toJs({ dict_converter: Object.fromEntries }) as ModelResult
+  out.destroy?.()
+  return js
 }
 
 /** Best-effort dependency detection: ws.table("x") reads and ws.publish("y"). */

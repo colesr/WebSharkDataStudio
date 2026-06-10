@@ -86,8 +86,24 @@ This is what makes WebShark a *sandbox* rather than a notebook.
   grades the outcome — error, schema drift, or contract violation — then restores
   your real data. Find the break before production does.
 
+## Modeling (sandbox-native)
+
+The **Model** cell trains & evaluates a model with scikit-learn (in Pyodide):
+pick a table, target, features and algorithm (Random Forest / Logistic·Linear /
+Decision Tree); the task (classification vs regression) is auto-detected. True to
+the sandbox philosophy, every model is:
+
+- **graded against a dumb baseline** (most-frequent / mean) — a model that can't
+  beat it isn't learning, and the cell says so in red;
+- **screened for leakage** — id-like, constant, or target-correlated features are
+  flagged before they flatter your metrics;
+- **stress-tested** — the held-out test set is perturbed (gaussian noise, zeroed
+  values, shuffling the top feature) to show how stable the metric really is.
+
+Plus a confusion matrix (classification) and feature importances.
+
 ## Roadmap
 
 The cell + DAG + shared-data-layer core is built so later workflows slot in as
-new cell types / panels: experiment tracking, A/B-test statistics, model
-training with scikit-learn, drift monitoring, and LLM/RAG evaluation harnesses.
+new cell types / panels: experiment tracking, A/B-test statistics, drift
+monitoring, and LLM/RAG evaluation harnesses.

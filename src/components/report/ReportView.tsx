@@ -5,6 +5,8 @@ import { VegaView } from '../notebook/VegaView'
 import { ProfileView } from '../ProfileView'
 import type { TableProfile } from '../../engine/profile'
 import type { StressResult } from '../../engine/stress'
+import type { ModelResult } from '../../engine/model'
+import { ModelResultView } from '../ModelResultView'
 import { exportReportHtml } from './exportHtml'
 
 export function ReportView() {
@@ -55,6 +57,16 @@ export function ReportView() {
               return (
                 <div className="report-block" key={cell.id}>
                   <ProfileView profile={cell.output.profile as TableProfile} />
+                </div>
+              )
+            }
+            if (cell.type === 'model' && cell.output?.model) {
+              return (
+                <div className="report-block" key={cell.id}>
+                  <div className="report-caption">Model</div>
+                  <div style={{ border: '1px solid var(--border-soft)', borderRadius: 8 }}>
+                    <ModelResultView result={cell.output.model as ModelResult} />
+                  </div>
                 </div>
               )
             }

@@ -8,6 +8,7 @@ import { OutputTable } from './OutputTable'
 import { ChartCell } from './ChartCell'
 import { ProfileCell } from './ProfileCell'
 import { StressCell } from './StressCell'
+import { ModelCell } from './ModelCell'
 
 const TYPE_LABEL: Record<string, string> = {
   sql: 'SQL',
@@ -16,6 +17,7 @@ const TYPE_LABEL: Record<string, string> = {
   chart: 'Chart',
   profile: 'Profile',
   stress: 'Stress-test',
+  model: 'Model',
 }
 
 export function CellView({ cell }: { cell: CellT }) {
@@ -111,6 +113,8 @@ export function CellView({ cell }: { cell: CellT }) {
         <ProfileCell cell={cell} />
       ) : cell.type === 'stress' ? (
         <StressCell cell={cell} />
+      ) : cell.type === 'model' ? (
+        <ModelCell cell={cell} />
       ) : (
         <Editor value={cell.code} lang={lang} onChange={onChange} onRun={run} />
       )}
