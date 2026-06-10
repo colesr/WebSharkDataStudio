@@ -24,6 +24,7 @@ export function buildProjectFile(): ProjectFile {
     meta: s.project,
     cells: s.cells.map((c) => ({ ...c, status: 'idle', output: undefined })),
     dictionary: s.dictionary,
+    contracts: s.contracts,
     datasets: listSources(),
   }
 }
@@ -41,6 +42,7 @@ export async function applyProjectFile(file: ProjectFile): Promise<void> {
   useStore.getState().loadProject({
     cells: file.cells,
     dictionary: file.dictionary || {},
+    contracts: file.contracts || {},
     project: file.meta,
   })
   // Reset engine state and reload the embedded source datasets.

@@ -12,6 +12,7 @@ import { useStore } from '../../state/store'
 import { downloadText } from '../../engine/persistence'
 import type { Cell, TablePreview } from '../../types'
 import type { TableProfile } from '../../engine/profile'
+import type { StressResult } from '../../engine/stress'
 
 function esc(s: unknown): string {
   return String(s ?? '')
@@ -71,6 +72,23 @@ function cellHtml(cell: Cell, chartId: { n: number }, specs: string[]): string {
   }
   if (cell.type === 'profile' && cell.output?.profile) {
     return `<div class="block">${profileHtml(cell.output.profile as TableProfile)}</div>`
+  }
+  if (cell.type === 'stress' && cell.output?.stress) {
+    const results = cell.output.stress as StressResult[]
+    const rows = results
+      .map((r) => {
+        const color = r.status === 'ok' ? '#2a9d4a' : r.status === 'warning' ? '#b8860b' : '#d1242f'
+        const icon = r.status === 'ok' ? '✓' : r.status === 'warning' ? '▲' : '✕'
+        return `<tr><td style="color:${color};font-weight:700">${icon}</td><td><b>${esc(
+          r.label,
+        )}</b></td><td>${r.inputRows}</td><td>${r.outputRows ?? '—'}</td><td>${esc(
+          r.message || (r.status === 'ok' ? 'ok' : ''),
+        )}</td></tr>`
+      })
+      .join('')
+    return `<div class="block"><div class="cap">Stress test</div><div class="tbl-wrap">
+      <table class="tbl"><thead><tr><th></th><th>attack</th><th>in</th><th>out</th><th>finding</th></tr></thead>
+      <tbody>${rows}</tbody></table></div></div>`
   }
   if ((cell.type === 'sql' || cell.type === 'python') && cell.output?.table) {
     const caption = cell.name ? `<div class="cap">${esc(cell.name)}</div>` : ''

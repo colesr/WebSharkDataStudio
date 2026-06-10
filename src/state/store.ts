@@ -13,6 +13,8 @@ import type {
   CellStatus,
   CellType,
   ColumnMeta,
+  ContractRule,
+  ContractStatus,
   ProjectMeta,
   TableMeta,
 } from '../types'
@@ -23,12 +25,14 @@ export function newId(prefix = 'c'): string {
   return `${prefix}_${Date.now().toString(36)}_${idCounter}`
 }
 
-export type InspectorTab = 'dictionary' | 'profile'
+export type InspectorTab = 'dictionary' | 'profile' | 'contracts'
 
 interface AppState {
   cells: Cell[]
   tables: Record<string, TableMeta>
   dictionary: Record<string, ColumnMeta[]>
+  contracts: Record<string, ContractRule[]>
+  contractStatus: Record<string, ContractStatus>
   project: ProjectMeta
   selectedCellId: string | null
   selectedTable: string | null
@@ -53,6 +57,10 @@ interface AppState {
   selectTable: (name: string | null) => void
   setInspectorTab: (tab: InspectorTab) => void
 
+  // contracts
+  setContract: (table: string, rules: ContractRule[]) => void
+  setContractStatus: (table: string, status: ContractStatus) => void
+
   // project / ui
   setProject: (patch: Partial<ProjectMeta>) => void
   setReportMode: (on: boolean) => void
@@ -61,6 +69,7 @@ interface AppState {
   loadProject: (data: {
     cells: Cell[]
     dictionary: Record<string, ColumnMeta[]>
+    contracts: Record<string, ContractRule[]>
     project: ProjectMeta
   }) => void
   reset: () => void
@@ -81,13 +90,15 @@ function starterCells(): Cell[] {
       id: newId(),
       type: 'markdown',
       code:
-        '# 🦈 Welcome to WebShark Data Studio\n\n' +
-        'A zero-install data science IDE that runs **entirely in your browser**.\n\n' +
-        '- Load data (or use the bundled samples in the left panel)\n' +
-        '- Query it with **SQL** (DuckDB) or **Python** (pandas) — they share one data layer\n' +
-        '- Cells are **reactive**: edit an upstream cell and downstream cells re-run\n' +
-        '- **Profile** any table and annotate it in the Data Dictionary →\n\n' +
-        'Try the SQL cell below.',
+        '# 🦈 WebShark Data Studio\n\n' +
+        'A lightweight, high-performance **sandbox for data science** — isolate a transform, ' +
+        '**stress-test it against adversarial data, and prove it’s production-ready** before it ships. ' +
+        'Runs **entirely in your browser**; nothing to install.\n\n' +
+        '- Load data (or use the bundled samples ←) and query with **SQL** or **Python** over one shared data layer\n' +
+        '- Cells are **reactive** — edit upstream, downstream re-runs (no stale hidden state)\n' +
+        '- **Profile** + annotate columns in the Data Dictionary, and pin **Contracts** that define "production-ready" →\n' +
+        '- **⚡ Stress-test** any transform with empty/duplicate/×25-volume/null-bomb/unicode inputs to find what breaks *first*\n\n' +
+        'Run the SQL cell below, then try `+ Stress-test` on it.',
       status: 'idle',
     },
     {
@@ -107,6 +118,8 @@ export const useStore = create<AppState>((set, get) => ({
   cells: starterCells(),
   tables: {},
   dictionary: {},
+  contracts: {},
+  contractStatus: {},
   project: defaultProject(),
   selectedCellId: null,
   selectedTable: null,
@@ -175,6 +188,12 @@ export const useStore = create<AppState>((set, get) => ({
   selectTable: (name) => set({ selectedTable: name, inspectorTab: 'dictionary' }),
   setInspectorTab: (tab) => set({ inspectorTab: tab }),
 
+  setContract: (table, rules) =>
+    set((s) => ({ contracts: { ...s.contracts, [table]: rules }, dirty: true })),
+
+  setContractStatus: (table, status) =>
+    set((s) => ({ contractStatus: { ...s.contractStatus, [table]: status } })),
+
   setProject: (patch) => set((s) => ({ project: { ...s.project, ...patch }, dirty: true })),
   setReportMode: (on) => set({ reportMode: on }),
   setPythonStage: (stage) => set({ pythonStage: stage }),
@@ -184,6 +203,8 @@ export const useStore = create<AppState>((set, get) => ({
     set({
       cells: data.cells,
       dictionary: data.dictionary,
+      contracts: data.contracts,
+      contractStatus: {},
       project: data.project,
       selectedCellId: null,
       selectedTable: null,
@@ -195,6 +216,8 @@ export const useStore = create<AppState>((set, get) => ({
       cells: starterCells(),
       tables: {},
       dictionary: {},
+      contracts: {},
+      contractStatus: {},
       project: defaultProject(),
       selectedCellId: null,
       selectedTable: null,

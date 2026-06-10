@@ -2,7 +2,7 @@
 // Core domain types for WebShark Data Studio.
 // ---------------------------------------------------------------------------
 
-export type CellType = 'sql' | 'python' | 'markdown' | 'chart' | 'profile'
+export type CellType = 'sql' | 'python' | 'markdown' | 'chart' | 'profile' | 'stress'
 
 export type CellStatus = 'idle' | 'stale' | 'running' | 'ok' | 'error'
 
@@ -27,6 +27,8 @@ export interface CellOutput {
   vegaSpec?: unknown
   /** TableProfile result for profile cells (see engine/profile.ts). */
   profile?: unknown
+  /** StressResult[] for stress cells (see engine/stress.ts). */
+  stress?: unknown
   /** Error message, if the run failed. */
   error?: string
   /** Wall-clock duration of the last run, ms. */
@@ -56,6 +58,8 @@ export interface Cell {
   chart?: ChartSpec
   /** Table name a profile cell targets. */
   profileTarget?: string
+  /** Stress-test configuration for stress cells. */
+  stressTarget?: { cellId?: string }
   status: CellStatus
   output?: CellOutput
   /** Whether the editor is collapsed. */
@@ -114,11 +118,47 @@ export interface EmbeddedDataset {
   source: TableMeta['source']
 }
 
+// ---- Data contracts (production-readiness rules per table) -----------------
+
+export type ContractRuleType =
+  | 'not_null'
+  | 'unique'
+  | 'range'
+  | 'allowed_values'
+  | 'regex'
+  | 'row_count'
+
+export interface ContractRule {
+  id: string
+  type: ContractRuleType
+  column?: string
+  min?: number
+  max?: number
+  values?: string[]
+  pattern?: string
+}
+
+export interface ContractRuleResult {
+  rule: ContractRule
+  passed: boolean
+  /** Rows violating the rule (-1 if the check itself errored). */
+  failingRows: number
+  total: number
+  detail?: string
+}
+
+export interface ContractStatus {
+  passed: number
+  failed: number
+  errored: number
+}
+
 export interface ProjectFile {
   app: 'webshark-data-studio'
   version: number
   meta: ProjectMeta
   cells: Cell[]
   dictionary: Record<string, ColumnMeta[]>
+  contracts: Record<string, ContractRule[]>
   datasets: EmbeddedDataset[]
 }

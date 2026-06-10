@@ -22,6 +22,8 @@ import { buildVegaSpec } from './chartspec'
 import { runPython, resetPython, onPythonLoad } from './python'
 import { downstreamOf, topoOrder, cellDeps, pythonWrites } from './dag'
 import { reloadSources, listSources } from './sources'
+import { STRESS_ATTACKS, type StressResult } from './stress'
+import { evaluateContract, summarize } from './contracts'
 
 // Forward Python load progress into the store for the loading indicator.
 onPythonLoad((stage) => {
@@ -31,7 +33,8 @@ onPythonLoad((stage) => {
 
 /** Refresh the table catalog and (re)build the data dictionary. */
 export async function refreshCatalog(): Promise<void> {
-  const names = await listTables()
+  // Hide internal scratch tables (e.g. stress-test backups) from the catalog.
+  const names = (await listTables()).filter((n) => !n.startsWith('__'))
   const prevTables = useStore.getState().tables
   const prevDict = useStore.getState().dictionary
   const tables: Record<string, TableMeta> = {}
@@ -163,11 +166,111 @@ async function executeCell(cell: Cell): Promise<void> {
       setCellStatus(cell.id, 'ok')
       return
     }
+
+    if (cell.type === 'stress') {
+      const results = await runStress(cell)
+      setCellOutput(cell.id, { stress: results, durationMs: performance.now() - t0 })
+      setCellStatus(cell.id, 'ok')
+      return
+    }
   } catch (err) {
     setCellOutput(cell.id, { error: String((err as Error).message || err) })
     setCellStatus(cell.id, 'error')
     throw err
   }
+}
+
+/**
+ * Stress-test a target transform cell: back up its input table, then rebuild
+ * that input from a library of adversarial / degenerate / scaled-up mutations,
+ * re-run the transform on each, and grade the outcome. Always restores the
+ * real input + output in a finally block.
+ */
+async function runStress(stressCell: Cell): Promise<StressResult[]> {
+  const cells = useStore.getState().cells
+  const targetId = stressCell.stressTarget?.cellId
+  const target = cells.find((c) => c.id === targetId)
+  if (!target) throw new Error('Pick a SQL or Python transform cell to stress-test.')
+
+  const deps = cellDeps(target)
+  const input = deps.reads[0]
+  const output = target.type === 'python' ? pythonWrites(target)[0] : deps.produces
+  if (!input) throw new Error('The target cell does not read any table.')
+  if (!output) throw new Error('The target cell must produce a named output table.')
+
+  const cols = await describeTable(input)
+  const bak = `__wsbak_stress`
+  const contracts = useStore.getState().contracts
+
+  // Back up the pristine input; baseline output schema is captured in-loop.
+  await queryArrow(`CREATE OR REPLACE TABLE "${bak}" AS SELECT * FROM "${input}"`)
+
+  const results: StressResult[] = []
+  let baselineSchema: string[] = []
+
+  try {
+    for (const attack of STRESS_ATTACKS) {
+      const a0 = performance.now()
+      let r: StressResult = {
+        attack: attack.key,
+        label: attack.label,
+        status: 'ok',
+        inputRows: 0,
+        durationMs: 0,
+      }
+      try {
+        // Rebuild the input from the pristine backup with this attack applied.
+        const body = attack.build(bak, cols)
+        await queryArrow(`CREATE OR REPLACE TABLE "${input}" AS ${body}`)
+        r.inputRows = await countRows(input)
+
+        // Run the transform on the mutated input.
+        await executeCell(useStore.getState().cells.find((c) => c.id === targetId)!)
+        const ran = useStore.getState().cells.find((c) => c.id === targetId)!
+        if (ran.status === 'error') {
+          r.status = 'error'
+          r.message = ran.output?.error
+        } else {
+          r.outputRows = await countRows(output)
+          const schema = (await describeTable(output)).map((c) => c.name)
+          if (attack.key === 'baseline') baselineSchema = schema
+          else if (baselineSchema.length && schema.join('|') !== baselineSchema.join('|')) {
+            r.schemaChanged = true
+            r.status = 'warning'
+            r.message = 'output schema changed'
+          }
+          // Evaluate any contract defined on the output table.
+          if (contracts[output]?.length) {
+            const res = await evaluateContract(output, contracts[output])
+            const sum = summarize(res)
+            r.contractFailures = sum.failed + sum.errored
+            if (r.contractFailures > 0) {
+              r.status = r.status === 'error' ? 'error' : 'warning'
+              r.message = `${r.contractFailures} contract rule(s) failed`
+            }
+          }
+        }
+      } catch (err) {
+        r.status = 'error'
+        r.message = String((err as Error).message || err)
+      }
+      r.durationMs = performance.now() - a0
+      results.push(r)
+    }
+  } finally {
+    // Restore the real input and recompute the real output.
+    try {
+      await queryArrow(`CREATE OR REPLACE TABLE "${input}" AS SELECT * FROM "${bak}"`)
+      await queryArrow(`DROP TABLE IF EXISTS "${bak}"`)
+      const t = useStore.getState().cells.find((c) => c.id === targetId)
+      if (t) await executeCell(t)
+    } catch (err) {
+      console.warn('Failed to restore after stress test', err)
+    }
+    await refreshCatalog()
+  }
+
+  return results
 }
 
 /** Run a single cell, then cascade to its reactive downstream dependents. */

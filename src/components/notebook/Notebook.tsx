@@ -37,6 +37,9 @@ export function Notebook() {
         <button className="btn sm" onClick={() => add('profile')}>
           + Profile
         </button>
+        <button className="btn sm" onClick={() => add('stress')} title="Stress-test a transform with adversarial data">
+          + Stress-test
+        </button>
         <button className="btn sm" onClick={() => add('markdown')}>
           + Markdown
         </button>

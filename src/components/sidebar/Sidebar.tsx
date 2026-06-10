@@ -164,9 +164,30 @@ function TableItem({
       : table.source === 'python'
         ? 'python'
         : 'sql'
+  const rules = useStore((s) => s.contracts[table.name])
+  const status = useStore((s) => s.contractStatus[table.name])
+  let contractDot: { color: string; title: string } | null = null
+  if (rules && rules.length) {
+    if (!status) contractDot = { color: 'var(--text-faint)', title: `${rules.length} rule(s), not checked` }
+    else if (status.failed || status.errored)
+      contractDot = { color: 'var(--err)', title: `${status.failed + status.errored} rule(s) failing` }
+    else contractDot = { color: 'var(--ok)', title: 'all contract rules pass' }
+  }
   return (
     <div className={`table-item ${selected ? 'selected' : ''}`} onClick={onSelect}>
       <div className="tname">
+        {contractDot && (
+          <span
+            title={`Contract: ${contractDot.title}`}
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: '50%',
+              background: contractDot.color,
+              flexShrink: 0,
+            }}
+          />
+        )}
         <span>{table.name}</span>
         <span className={`badge ${badgeClass}`}>{table.source}</span>
       </div>
@@ -210,7 +231,17 @@ function Outline() {
   const cells = useStore((s) => s.cells)
   const selectCell = useStore((s) => s.selectCell)
   const icon = (t: string) =>
-    t === 'sql' ? '⌗' : t === 'python' ? '🐍' : t === 'markdown' ? '¶' : t === 'chart' ? '📊' : '🔍'
+    t === 'sql'
+      ? '⌗'
+      : t === 'python'
+        ? '🐍'
+        : t === 'markdown'
+          ? '¶'
+          : t === 'chart'
+            ? '📊'
+            : t === 'stress'
+              ? '⚡'
+              : '🔍'
 
   return (
     <div style={{ marginTop: 8, borderTop: '1px solid var(--border-soft)' }}>

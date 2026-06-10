@@ -1,6 +1,7 @@
 import { useStore } from '../../state/store'
 import { DataDictionary } from './DataDictionary'
 import { ProfilePanel } from './ProfilePanel'
+import { ContractsPanel } from './ContractsPanel'
 
 export function Inspector() {
   const selectedTable = useStore((s) => s.selectedTable)
@@ -27,11 +28,16 @@ export function Inspector() {
             <div className={`tab ${tab === 'profile' ? 'active' : ''}`} onClick={() => setTab('profile')}>
               Profile
             </div>
+            <div className={`tab ${tab === 'contracts' ? 'active' : ''}`} onClick={() => setTab('contracts')}>
+              Contracts
+            </div>
           </div>
           {tab === 'dictionary' ? (
             <DataDictionary table={selectedTable} />
-          ) : (
+          ) : tab === 'profile' ? (
             <ProfilePanel table={selectedTable} />
+          ) : (
+            <ContractsPanel table={selectedTable} />
           )}
         </>
       )}

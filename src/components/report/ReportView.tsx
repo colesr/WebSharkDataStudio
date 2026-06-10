@@ -4,6 +4,7 @@ import { OutputTable } from '../notebook/OutputTable'
 import { VegaView } from '../notebook/VegaView'
 import { ProfileView } from '../ProfileView'
 import type { TableProfile } from '../../engine/profile'
+import type { StressResult } from '../../engine/stress'
 import { exportReportHtml } from './exportHtml'
 
 export function ReportView() {
@@ -54,6 +55,31 @@ export function ReportView() {
               return (
                 <div className="report-block" key={cell.id}>
                   <ProfileView profile={cell.output.profile as TableProfile} />
+                </div>
+              )
+            }
+            if (cell.type === 'stress' && cell.output?.stress) {
+              const results = cell.output.stress as StressResult[]
+              const broke = results.filter((r) => r.status !== 'ok')
+              return (
+                <div className="report-block" key={cell.id}>
+                  <div className="report-caption">Stress test</div>
+                  <div style={{ fontSize: 13 }}>
+                    {results.length} adversarial inputs ·{' '}
+                    <span style={{ color: 'var(--ok)' }}>{results.length - broke.length} passed</span>
+                    {broke.length > 0 && (
+                      <span style={{ color: 'var(--err)' }}>, {broke.length} broke/warned</span>
+                    )}
+                    {broke.length > 0 && (
+                      <ul>
+                        {broke.map((r) => (
+                          <li key={r.attack}>
+                            <b>{r.label}</b>: {r.message}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
               )
             }

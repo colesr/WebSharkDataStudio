@@ -16,6 +16,7 @@ export function App() {
   const reportMode = useStore((s) => s.reportMode)
   const cells = useStore((s) => s.cells)
   const dictionary = useStore((s) => s.dictionary)
+  const contracts = useStore((s) => s.contracts)
   const project = useStore((s) => s.project)
   const didBoot = useRef(false)
 
@@ -48,7 +49,7 @@ export function App() {
     if (boot !== 'ready') return
     const t = setTimeout(() => autosave(), 600)
     return () => clearTimeout(t)
-  }, [cells, dictionary, project, boot])
+  }, [cells, dictionary, contracts, project, boot])
 
   if (boot === 'booting') {
     return (
