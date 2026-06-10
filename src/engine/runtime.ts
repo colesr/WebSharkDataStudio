@@ -24,6 +24,7 @@ import { downstreamOf, topoOrder, cellDeps, pythonWrites } from './dag'
 import { reloadSources, listSources } from './sources'
 import { STRESS_ATTACKS, type StressResult } from './stress'
 import { evaluateContract, summarize } from './contracts'
+import { runABTest } from './abtest'
 import { withTask, logActivity } from '../state/activity'
 
 // Forward Python load progress into the store for the loading indicator.
@@ -159,6 +160,10 @@ function cellLabel(cell: Cell): string | null {
       return cell.stressTarget?.cellId ? 'Stress-testing transform' : null
     case 'model':
       return cell.model?.target ? `Training ${cell.model.algo} → ${cell.model.target}` : null
+    case 'abtest':
+      return cell.abtest?.variantCol && cell.abtest?.metricCol
+        ? `A/B test · ${cell.abtest.metricCol} by ${cell.abtest.variantCol}`
+        : null
     default:
       return null
   }
@@ -248,6 +253,18 @@ async function executeCellInner(cell: Cell): Promise<void> {
     if (cell.type === 'stress') {
       const results = await runStress(cell)
       setCellOutput(cell.id, { stress: results, durationMs: performance.now() - t0 })
+      setCellStatus(cell.id, 'ok')
+      return
+    }
+
+    if (cell.type === 'abtest') {
+      const spec = cell.abtest
+      if (!spec?.table || !spec.variantCol || !spec.metricCol) {
+        setCellStatus(cell.id, 'idle')
+        return
+      }
+      const result = await runABTest(spec)
+      setCellOutput(cell.id, { abtest: result, durationMs: performance.now() - t0 })
       setCellStatus(cell.id, 'ok')
       return
     }

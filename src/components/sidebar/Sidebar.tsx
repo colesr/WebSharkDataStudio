@@ -248,7 +248,9 @@ function Outline() {
                 ? '🧪'
                 : t === 'experiments'
                   ? '📋'
-                  : '🔍'
+                  : t === 'abtest'
+                    ? '🆎'
+                    : '🔍'
 
   return (
     <div style={{ marginTop: 8, borderTop: '1px solid var(--border-soft)' }}>

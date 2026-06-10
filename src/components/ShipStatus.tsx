@@ -1,12 +1,13 @@
 import { useStore } from '../state/store'
 import type { ModelResult } from '../engine/model'
+import type { ABResult } from '../engine/abtest'
 
 // A single at-a-glance "is this analysis production-ready?" indicator covering
-// BOTH data contracts and trained models:
+// data contracts, trained models, AND A/B tests:
 //   grey  = nothing to check yet
 //   amber = contracts defined but not yet evaluated
-//   green = every contract passes AND every model beats its baseline
-//   red   = at least one contract failing or one model not beating baseline
+//   green = every contract passes, every model beats baseline, no SRM mismatch
+//   red   = a failing contract, a model not beating baseline, or an A/B SRM mismatch
 export function ShipStatus() {
   const contracts = useStore((s) => s.contracts)
   const status = useStore((s) => s.contractStatus)
@@ -17,6 +18,7 @@ export function ShipStatus() {
 
   const contractTables = Object.keys(contracts).filter((t) => (contracts[t]?.length ?? 0) > 0)
   const modelCells = cells.filter((c) => c.type === 'model' && c.output?.model)
+  const abCells = cells.filter((c) => c.type === 'abtest' && c.output?.abtest)
 
   let contractIssues = 0
   let unchecked = 0
@@ -40,8 +42,20 @@ export function ShipStatus() {
     }
   }
 
-  const hasChecks = contractTables.length > 0 || modelCells.length > 0
-  const issues = contractIssues + modelIssues
+  // An A/B test with a sample-ratio-mismatch is a data-integrity red flag.
+  // (A non-significant result is valid science, so it is NOT an "issue".)
+  let abIssues = 0
+  let firstFailingAB: string | null = null
+  for (const c of abCells) {
+    const r = c.output!.abtest as ABResult
+    if (r.srm?.mismatch) {
+      abIssues++
+      if (!firstFailingAB) firstFailingAB = c.id
+    }
+  }
+
+  const hasChecks = contractTables.length > 0 || modelCells.length > 0 || abCells.length > 0
+  const issues = contractIssues + modelIssues + abIssues
 
   let color = 'var(--text-faint)'
   let icon = '○'
@@ -66,9 +80,10 @@ export function ShipStatus() {
     if (firstFailingTable) {
       selectTable(firstFailingTable)
       setInspectorTab('contracts')
-    } else if (firstFailingModel) {
-      selectCell(firstFailingModel)
-      document.getElementById(`cell-${firstFailingModel}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    } else if (firstFailingModel || firstFailingAB) {
+      const id = firstFailingModel || firstFailingAB!
+      selectCell(id)
+      document.getElementById(`cell-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     } else if (contractTables[0]) {
       selectTable(contractTables[0])
       setInspectorTab('contracts')
@@ -78,6 +93,7 @@ export function ShipStatus() {
   const parts: string[] = []
   if (contractTables.length) parts.push(`${contractTables.length} contract${contractTables.length === 1 ? '' : 's'}`)
   if (modelCells.length) parts.push(`${modelCells.length} model${modelCells.length === 1 ? '' : 's'}`)
+  if (abCells.length) parts.push(`${abCells.length} A/B test${abCells.length === 1 ? '' : 's'}`)
 
   return (
     <button

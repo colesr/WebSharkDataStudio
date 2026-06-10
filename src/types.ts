@@ -11,6 +11,7 @@ export type CellType =
   | 'stress'
   | 'model'
   | 'experiments'
+  | 'abtest'
 
 export type CellStatus = 'idle' | 'stale' | 'running' | 'ok' | 'error'
 
@@ -39,6 +40,8 @@ export interface CellOutput {
   stress?: unknown
   /** ModelResult for model cells (see engine/model.ts). */
   model?: unknown
+  /** ABResult for abtest cells (see engine/abtest.ts). */
+  abtest?: unknown
   /** Error message, if the run failed. */
   error?: string
   /** Wall-clock duration of the last run, ms. */
@@ -65,6 +68,17 @@ export interface ModelSpec {
   algo: 'linear' | 'tree' | 'forest'
 }
 
+export interface ABSpec {
+  table: string
+  variantCol?: string
+  metricCol?: string
+  metricType: 'mean' | 'proportion'
+  /** Control variant name; defaults to the first variant. */
+  control?: string
+  /** Significance level (default 0.05). */
+  alpha?: number
+}
+
 export interface Cell {
   id: string
   type: CellType
@@ -80,6 +94,8 @@ export interface Cell {
   stressTarget?: { cellId?: string }
   /** Model configuration for model cells. */
   model?: ModelSpec
+  /** A/B test configuration for abtest cells. */
+  abtest?: ABSpec
   status: CellStatus
   output?: CellOutput
   /** Whether the editor is collapsed. */

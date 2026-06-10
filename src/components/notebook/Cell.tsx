@@ -10,6 +10,7 @@ import { ProfileCell } from './ProfileCell'
 import { StressCell } from './StressCell'
 import { ModelCell } from './ModelCell'
 import { ExperimentsCell } from './ExperimentsCell'
+import { ABTestCell } from './ABTestCell'
 
 const TYPE_LABEL: Record<string, string> = {
   sql: 'SQL',
@@ -20,6 +21,7 @@ const TYPE_LABEL: Record<string, string> = {
   stress: 'Stress-test',
   model: 'Model',
   experiments: 'Experiments',
+  abtest: 'A/B test',
 }
 
 const DND_TYPE = 'text/wsds-cell'
@@ -176,6 +178,8 @@ export function CellView({ cell }: { cell: CellT }) {
         <ModelCell cell={cell} />
       ) : cell.type === 'experiments' ? (
         <ExperimentsCell />
+      ) : cell.type === 'abtest' ? (
+        <ABTestCell cell={cell} />
       ) : (
         <Editor value={cell.code} lang={lang} onChange={onChange} onRun={run} />
       )}

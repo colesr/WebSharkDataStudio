@@ -106,12 +106,24 @@ Every training run is auto-logged to the **Experiments** cell — a comparison
 table of params, metrics, baseline lift, leakage count, and robustness, with the
 best run per target starred — so you can see what changed and what won.
 
+## A/B testing (statistical experiments)
+
+The **A/B test** cell answers causal/inferential questions, fully client-side
+(DuckDB aggregates + in-house TypeScript statistics — no Pyodide). Pick a table,
+a **variant** column and a **metric**: choose *proportion* (0/1 outcomes) or
+*mean* (continuous). You get per-variant rates/means, **lift + 95% CI**, a
+**p-value** (two-proportion z-test or Welch's t-test) and a significance gate —
+plus a **sample-ratio-mismatch (SRM)** chi-square check that flags broken
+randomization/logging before you trust anything. An SRM mismatch turns the
+ship-ready banner red.
+
 ## Ship-ready at a glance
 
 The toolbar shows one colored pill that summarizes whether the whole analysis is
-production-ready: **green** when every data contract passes *and* every model
-beats its baseline, **red** (with a count) when something fails, **grey** when
-there's nothing to check yet. Click it to jump straight to the problem.
+production-ready: **green** when every data contract passes, every model beats
+its baseline, and no A/B test has a sample-ratio mismatch; **red** (with a count)
+when something fails; **grey** when there's nothing to check yet. Click it to jump
+straight to the problem.
 
 ## Roadmap
 

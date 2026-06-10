@@ -14,6 +14,7 @@ import type { Cell, TablePreview } from '../../types'
 import type { TableProfile } from '../../engine/profile'
 import type { StressResult } from '../../engine/stress'
 import type { ModelResult } from '../../engine/model'
+import type { ABResult } from '../../engine/abtest'
 
 function esc(s: unknown): string {
   return String(s ?? '')
@@ -95,6 +96,41 @@ function cellHtml(cell: Cell, chartId: { n: number }, specs: string[]): string {
       <div class="tbl-wrap" style="margin-top:8px"><table class="tbl"><thead><tr><th>perturbation</th><th>${esc(
         pm.name,
       )}</th></tr></thead><tbody>${stress}</tbody></table></div></div>`
+  }
+  if (cell.type === 'abtest' && cell.output?.abtest) {
+    const r = cell.output.abtest as ABResult
+    const isProp = r.metricType === 'proportion'
+    const f = (v: number) => (isProp ? `${(v * 100).toFixed(2)}%` : v.toFixed(3))
+    const variantRows = r.variants
+      .map(
+        (v) =>
+          `<tr><td><b>${esc(v.name)}</b>${v.isControl ? ' (control)' : ''}</td><td>${v.n}</td><td>${f(
+            v.mean,
+          )}</td></tr>`,
+      )
+      .join('')
+    const compRows = r.comparisons
+      .map(
+        (c) =>
+          `<tr><td>${esc(c.variant)}</td><td>${
+            c.lift == null ? '—' : `${c.lift >= 0 ? '+' : ''}${(c.lift * 100).toFixed(1)}%`
+          }</td><td>${c.pValue < 0.0001 ? '<0.0001' : c.pValue.toFixed(4)}</td><td>${
+            c.significant ? 'significant' : 'n.s.'
+          }</td></tr>`,
+      )
+      .join('')
+    const srm = r.srm.mismatch
+      ? `<div style="color:#d1242f">✕ Sample ratio mismatch (p=${r.srm.pValue.toFixed(4)})</div>`
+      : ''
+    return `<div class="block"><div class="cap">A/B test — ${esc(r.metricType)} · control ${esc(
+      r.control,
+    )}</div>${srm}
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>variant</th><th>n</th><th>${
+        isProp ? 'rate' : 'mean'
+      }</th></tr></thead><tbody>${variantRows}</tbody></table></div>
+      <div class="tbl-wrap" style="margin-top:8px"><table class="tbl"><thead><tr><th>vs ${esc(
+        r.control,
+      )}</th><th>lift</th><th>p</th><th></th></tr></thead><tbody>${compRows}</tbody></table></div></div>`
   }
   if (cell.type === 'stress' && cell.output?.stress) {
     const results = cell.output.stress as StressResult[]

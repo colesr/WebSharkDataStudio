@@ -6,7 +6,9 @@ import { ProfileView } from '../ProfileView'
 import type { TableProfile } from '../../engine/profile'
 import type { StressResult } from '../../engine/stress'
 import type { ModelResult } from '../../engine/model'
+import type { ABResult } from '../../engine/abtest'
 import { ModelResultView } from '../ModelResultView'
+import { ABResultView } from '../ABResultView'
 import { ExperimentsView } from '../ExperimentsView'
 import { exportReportHtml } from './exportHtml'
 
@@ -68,6 +70,16 @@ export function ReportView() {
                   <div className="report-caption">Model</div>
                   <div style={{ border: '1px solid var(--border-soft)', borderRadius: 8 }}>
                     <ModelResultView result={cell.output.model as ModelResult} />
+                  </div>
+                </div>
+              )
+            }
+            if (cell.type === 'abtest' && cell.output?.abtest) {
+              return (
+                <div className="report-block" key={cell.id}>
+                  <div className="report-caption">A/B test</div>
+                  <div style={{ border: '1px solid var(--border-soft)', borderRadius: 8 }}>
+                    <ABResultView result={cell.output.abtest as ABResult} />
                   </div>
                 </div>
               )
