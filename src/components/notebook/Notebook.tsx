@@ -1,5 +1,6 @@
 import { useStore } from '../../state/store'
 import { CellView } from './Cell'
+import { StaleBanner } from '../StaleBanner'
 import type { CellType } from '../../types'
 
 export function Notebook() {
@@ -21,6 +22,7 @@ export function Notebook() {
 
   return (
     <div className="notebook">
+      <StaleBanner />
       {cells.map((c) => (
         <CellView key={c.id} cell={c} />
       ))}
