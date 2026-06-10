@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore, newId } from '../../state/store'
 import { evaluateContract, summarize, describeRule } from '../../engine/contracts'
 import type { ContractRule, ContractRuleResult, ContractRuleType } from '../../types'
@@ -15,11 +15,15 @@ const RULE_TYPES: { value: ContractRuleType; label: string }[] = [
 export function ContractsPanel({ table }: { table: string }) {
   const rules = useStore((s) => s.contracts[table]) || []
   const setContract = useStore((s) => s.setContract)
-  const setContractStatus = useStore((s) => s.setContractStatus)
+  const setContractResults = useStore((s) => s.setContractResults)
+  const clearContractResults = useStore((s) => s.clearContractResults)
+  const storeResults = useStore((s) => s.contractResults[table])
   const dict = useStore((s) => s.dictionary[table]) || []
   const columns = dict.map((c) => c.name)
-  const [results, setResults] = useState<Record<string, ContractRuleResult>>({})
   const [checking, setChecking] = useState(false)
+
+  const results: Record<string, ContractRuleResult> = {}
+  for (const r of storeResults || []) results[r.rule.id] = r
 
   function addRule() {
     const rule: ContractRule = {
@@ -34,25 +38,33 @@ export function ContractsPanel({ table }: { table: string }) {
   }
   function removeRule(id: string) {
     setContract(table, rules.filter((r) => r.id !== id))
-    setResults((prev) => {
-      const next = { ...prev }
-      delete next[id]
-      return next
-    })
   }
 
   async function check() {
     setChecking(true)
     try {
       const res = await evaluateContract(table, rules)
-      const byId: Record<string, ContractRuleResult> = {}
-      for (const r of res) byId[r.rule.id] = r
-      setResults(byId)
-      setContractStatus(table, summarize(res))
+      setContractResults(table, res, summarize(res))
     } finally {
       setChecking(false)
     }
   }
+
+  // Auto-check when rules change or the table is (re)selected. Data-change
+  // re-checks happen globally in refreshCatalog after every run. Debounced so
+  // editing rule values stays snappy.
+  const rulesKey = JSON.stringify(rules)
+  const checkRef = useRef(check)
+  checkRef.current = check
+  useEffect(() => {
+    if (!rules.length) {
+      clearContractResults(table)
+      return
+    }
+    const t = setTimeout(() => checkRef.current(), 350)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [table, rulesKey])
 
   const needsColumn = (t: ContractRuleType) => t !== 'row_count'
 
@@ -60,7 +72,8 @@ export function ContractsPanel({ table }: { table: string }) {
     <div style={{ overflowY: 'auto' }}>
       <div style={{ padding: '8px 12px', fontSize: 11, color: 'var(--text-faint)' }}>
         Define what “production-ready” means for <b style={{ color: 'var(--text)' }}>{table}</b>. Rules
-        run as in-engine SQL and report exactly how many rows violate them.
+        run as in-engine SQL and <b style={{ color: 'var(--text)' }}>re-check automatically after every run</b>,
+        reporting exactly how many rows violate them.
       </div>
 
       {rules.length === 0 && <div className="empty">No rules yet. Add one below.</div>}
@@ -171,7 +184,7 @@ export function ContractsPanel({ table }: { table: string }) {
           + Add rule
         </button>
         <button className="btn sm primary" onClick={check} disabled={!rules.length || checking}>
-          {checking ? <span className="spinner" /> : '✓'} Check contract
+          {checking ? <span className="spinner" /> : '✓'} Re-check now
         </button>
       </div>
     </div>

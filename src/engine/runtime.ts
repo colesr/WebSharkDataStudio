@@ -83,6 +83,33 @@ export async function refreshCatalog(): Promise<void> {
 
   // Drop dictionary entries for tables that no longer exist.
   useStore.getState().setTables(tables)
+
+  // Real-time contracts: re-evaluate every defined contract against the
+  // freshly-updated tables so the sidebar status + Inspector reflect the
+  // current data after any run.
+  await autoCheckContracts(tables)
+}
+
+/** Evaluate all defined contracts against current tables and store results. */
+export async function autoCheckContracts(
+  tables: Record<string, TableMeta>,
+): Promise<void> {
+  const store = useStore.getState()
+  const { contracts } = store
+  for (const [table, rules] of Object.entries(contracts)) {
+    if (!rules.length) continue
+    if (!tables[table]) {
+      // Table gone — clear any stale status.
+      store.clearContractResults(table)
+      continue
+    }
+    try {
+      const results = await evaluateContract(table, rules)
+      store.setContractResults(table, results, summarize(results))
+    } catch (err) {
+      console.warn(`Contract check failed for ${table}`, err)
+    }
+  }
 }
 
 export function markStaleDownstream(cellId: string): void {
