@@ -102,6 +102,17 @@ the sandbox philosophy, every model is:
 
 Plus a confusion matrix (classification) and feature importances.
 
+Every training run is auto-logged to the **Experiments** cell — a comparison
+table of params, metrics, baseline lift, leakage count, and robustness, with the
+best run per target starred — so you can see what changed and what won.
+
+## Ship-ready at a glance
+
+The toolbar shows one colored pill that summarizes whether the whole analysis is
+production-ready: **green** when every data contract passes *and* every model
+beats its baseline, **red** (with a count) when something fails, **grey** when
+there's nothing to check yet. Click it to jump straight to the problem.
+
 ## Roadmap
 
 The cell + DAG + shared-data-layer core is built so later workflows slot in as

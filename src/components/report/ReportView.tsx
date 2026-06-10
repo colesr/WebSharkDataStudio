@@ -7,11 +7,13 @@ import type { TableProfile } from '../../engine/profile'
 import type { StressResult } from '../../engine/stress'
 import type { ModelResult } from '../../engine/model'
 import { ModelResultView } from '../ModelResultView'
+import { ExperimentsView } from '../ExperimentsView'
 import { exportReportHtml } from './exportHtml'
 
 export function ReportView() {
   const cells = useStore((s) => s.cells)
   const project = useStore((s) => s.project)
+  const experiments = useStore((s) => s.experiments)
   const setReportMode = useStore((s) => s.setReportMode)
 
   return (
@@ -66,6 +68,16 @@ export function ReportView() {
                   <div className="report-caption">Model</div>
                   <div style={{ border: '1px solid var(--border-soft)', borderRadius: 8 }}>
                     <ModelResultView result={cell.output.model as ModelResult} />
+                  </div>
+                </div>
+              )
+            }
+            if (cell.type === 'experiments') {
+              return (
+                <div className="report-block" key={cell.id}>
+                  <div className="report-caption">Experiments</div>
+                  <div style={{ border: '1px solid var(--border-soft)', borderRadius: 8, overflow: 'hidden' }}>
+                    <ExperimentsView runs={experiments} />
                   </div>
                 </div>
               )

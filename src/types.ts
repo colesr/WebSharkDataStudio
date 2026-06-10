@@ -10,6 +10,7 @@ export type CellType =
   | 'profile'
   | 'stress'
   | 'model'
+  | 'experiments'
 
 export type CellStatus = 'idle' | 'stale' | 'running' | 'ok' | 'error'
 
@@ -172,6 +173,30 @@ export interface ContractStatus {
   errored: number
 }
 
+// ---- Experiment tracking ---------------------------------------------------
+
+export interface ExperimentRun {
+  id: string
+  ts: string
+  cellId: string
+  table: string
+  target: string
+  task: 'classification' | 'regression'
+  algo: string
+  nFeatures: number
+  nTrain: number
+  nTest: number
+  seed: number
+  primaryName: string
+  primaryModel: number
+  primaryBaseline: number
+  beatsBaseline: boolean
+  metrics: Record<string, number>
+  leakageCount: number
+  /** Most negative metric delta across stress perturbations (null if none). */
+  worstStressDelta: number | null
+}
+
 export interface ProjectFile {
   app: 'webshark-data-studio'
   version: number
@@ -179,5 +204,6 @@ export interface ProjectFile {
   cells: Cell[]
   dictionary: Record<string, ColumnMeta[]>
   contracts: Record<string, ContractRule[]>
+  experiments: ExperimentRun[]
   datasets: EmbeddedDataset[]
 }

@@ -25,6 +25,7 @@ export function buildProjectFile(): ProjectFile {
     cells: s.cells.map((c) => ({ ...c, status: 'idle', output: undefined })),
     dictionary: s.dictionary,
     contracts: s.contracts,
+    experiments: s.experiments,
     datasets: listSources(),
   }
 }
@@ -43,6 +44,7 @@ export async function applyProjectFile(file: ProjectFile): Promise<void> {
     cells: file.cells,
     dictionary: file.dictionary || {},
     contracts: file.contracts || {},
+    experiments: file.experiments || [],
     project: file.meta,
   })
   // Reset engine state and reload the embedded source datasets.

@@ -6,7 +6,7 @@
 // dictionary, and performs deterministic fresh-kernel run-all.
 // ---------------------------------------------------------------------------
 
-import { useStore } from '../state/store'
+import { useStore, newId } from '../state/store'
 import type { Cell, ColumnMeta, TableMeta } from '../types'
 import {
   listTables,
@@ -216,6 +216,30 @@ async function executeCell(cell: Cell): Promise<void> {
       })
       setCellOutput(cell.id, { model: result, durationMs: performance.now() - t0 })
       setCellStatus(cell.id, 'ok')
+      // Log this run into the experiment tracker.
+      const deltas = result.stress
+        .map((s) => (s.metric == null ? null : s.metric - s.clean))
+        .filter((d): d is number => d != null)
+      useStore.getState().addExperiment({
+        id: newId('exp'),
+        ts: new Date().toISOString(),
+        cellId: cell.id,
+        table: spec.table,
+        target: spec.target,
+        task: result.task,
+        algo: result.algo,
+        nFeatures: result.nFeatures,
+        nTrain: result.nTrain,
+        nTest: result.nTest,
+        seed: project.seed,
+        primaryName: result.primaryMetric.name,
+        primaryModel: result.primaryMetric.model,
+        primaryBaseline: result.primaryMetric.baseline,
+        beatsBaseline: result.beatsBaseline,
+        metrics: result.metrics,
+        leakageCount: result.leakage.length,
+        worstStressDelta: deltas.length ? Math.min(...deltas) : null,
+      })
       return
     }
   } catch (err) {

@@ -16,6 +16,7 @@ import type {
   ContractRule,
   ContractRuleResult,
   ContractStatus,
+  ExperimentRun,
   ProjectMeta,
   TableMeta,
 } from '../types'
@@ -35,6 +36,7 @@ interface AppState {
   contracts: Record<string, ContractRule[]>
   contractStatus: Record<string, ContractStatus>
   contractResults: Record<string, ContractRuleResult[]>
+  experiments: ExperimentRun[]
   project: ProjectMeta
   selectedCellId: string | null
   selectedTable: string | null
@@ -65,6 +67,10 @@ interface AppState {
   setContractResults: (table: string, results: ContractRuleResult[], status: ContractStatus) => void
   clearContractResults: (table: string) => void
 
+  // experiments
+  addExperiment: (run: ExperimentRun) => void
+  clearExperiments: () => void
+
   // project / ui
   setProject: (patch: Partial<ProjectMeta>) => void
   setReportMode: (on: boolean) => void
@@ -74,6 +80,7 @@ interface AppState {
     cells: Cell[]
     dictionary: Record<string, ColumnMeta[]>
     contracts: Record<string, ContractRule[]>
+    experiments: ExperimentRun[]
     project: ProjectMeta
   }) => void
   reset: () => void
@@ -125,6 +132,7 @@ export const useStore = create<AppState>((set, get) => ({
   contracts: {},
   contractStatus: {},
   contractResults: {},
+  experiments: [],
   project: defaultProject(),
   selectedCellId: null,
   selectedTable: null,
@@ -214,6 +222,11 @@ export const useStore = create<AppState>((set, get) => ({
       return { contractResults: results, contractStatus: status }
     }),
 
+  addExperiment: (run) =>
+    set((s) => ({ experiments: [...s.experiments, run], dirty: true })),
+
+  clearExperiments: () => set({ experiments: [], dirty: true }),
+
   setProject: (patch) => set((s) => ({ project: { ...s.project, ...patch }, dirty: true })),
   setReportMode: (on) => set({ reportMode: on }),
   setPythonStage: (stage) => set({ pythonStage: stage }),
@@ -226,6 +239,7 @@ export const useStore = create<AppState>((set, get) => ({
       contracts: data.contracts,
       contractStatus: {},
       contractResults: {},
+      experiments: data.experiments,
       project: data.project,
       selectedCellId: null,
       selectedTable: null,
@@ -240,6 +254,7 @@ export const useStore = create<AppState>((set, get) => ({
       contracts: {},
       contractStatus: {},
       contractResults: {},
+      experiments: [],
       project: defaultProject(),
       selectedCellId: null,
       selectedTable: null,

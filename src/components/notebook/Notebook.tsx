@@ -43,6 +43,9 @@ export function Notebook() {
         <button className="btn sm" onClick={() => add('model')} title="Train & evaluate a model with baseline gate + stress-test">
           + Model
         </button>
+        <button className="btn sm" onClick={() => add('experiments')} title="Compare all logged model runs">
+          + Experiments
+        </button>
         <button className="btn sm" onClick={() => add('markdown')}>
           + Markdown
         </button>
