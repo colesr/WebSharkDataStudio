@@ -687,6 +687,18 @@ button {
 }
 .vega-host {
   padding: 10px;
+  width: 100%;
+}
+/* vega-embed adds `display:inline-block` to its container, which collapses to
+   ~0 width and breaks Vega-Lite's width:"container" (circular sizing). Force
+   block + full width so the chart measures the real container width. */
+.vega-host.vega-embed,
+.vega-host .vega-embed {
+  display: block;
+  width: 100%;
+}
+.vega-host .marks {
+  max-width: 100%;
 }
 
 /* empty states */
