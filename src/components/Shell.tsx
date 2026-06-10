@@ -3,11 +3,12 @@ import { Toolbar } from './Toolbar'
 import { Sidebar } from './sidebar/Sidebar'
 import { Notebook } from './notebook/Notebook'
 import { Inspector } from './inspector/Inspector'
-import { PythonToast } from './PythonToast'
+import { ActivityConsole, TopProgress } from './ActivityConsole'
 
 export function Shell() {
   return (
     <div className="app">
+      <TopProgress />
       <Toolbar />
       <PanelGroup direction="horizontal" className="panes" autoSaveId="wsds-layout">
         <Panel defaultSize={20} minSize={14} maxSize={34}>
@@ -24,7 +25,7 @@ export function Shell() {
           <Inspector />
         </Panel>
       </PanelGroup>
-      <PythonToast />
+      <ActivityConsole />
     </div>
   )
 }

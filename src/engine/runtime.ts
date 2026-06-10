@@ -24,6 +24,7 @@ import { downstreamOf, topoOrder, cellDeps, pythonWrites } from './dag'
 import { reloadSources, listSources } from './sources'
 import { STRESS_ATTACKS, type StressResult } from './stress'
 import { evaluateContract, summarize } from './contracts'
+import { withTask, logActivity } from '../state/activity'
 
 // Forward Python load progress into the store for the loading indicator.
 onPythonLoad((stage) => {
@@ -143,7 +144,33 @@ export function markStaleDownstream(cellId: string): void {
   }
 }
 
-async function executeCell(cell: Cell): Promise<void> {
+/** A human label for the activity log, or null for cells that don't "run". */
+function cellLabel(cell: Cell): string | null {
+  switch (cell.type) {
+    case 'sql':
+      return cell.code.trim() ? `Running SQL${cell.name ? ` → ${cell.name}` : ''}` : null
+    case 'python':
+      return cell.code.trim() ? 'Running Python' : null
+    case 'chart':
+      return cell.chart?.table ? `Rendering chart · ${cell.chart.table}` : null
+    case 'profile':
+      return cell.profileTarget ? `Profiling ${cell.profileTarget}` : null
+    case 'stress':
+      return cell.stressTarget?.cellId ? 'Stress-testing transform' : null
+    case 'model':
+      return cell.model?.target ? `Training ${cell.model.algo} → ${cell.model.target}` : null
+    default:
+      return null
+  }
+}
+
+/** Execute a cell, logging it to the activity console (envelope + busy). */
+function executeCell(cell: Cell): Promise<void> {
+  const label = cellLabel(cell)
+  return label ? withTask(label, () => executeCellInner(cell)) : executeCellInner(cell)
+}
+
+async function executeCellInner(cell: Cell): Promise<void> {
   const store = useStore.getState()
   const { project, setCellStatus, setCellOutput } = store
   const t0 = performance.now()
@@ -312,13 +339,14 @@ async function runStress(stressCell: Cell): Promise<StressResult[]> {
         durationMs: 0,
       }
       try {
+        logActivity(`Stress: ${attack.label}`)
         // Rebuild the input from the pristine backup with this attack applied.
         const body = attack.build(bak, cols)
         await queryArrow(`CREATE OR REPLACE TABLE "${input}" AS ${body}`)
         r.inputRows = await countRows(input)
 
         // Run the transform on the mutated input.
-        await executeCell(useStore.getState().cells.find((c) => c.id === targetId)!)
+        await executeCellInner(useStore.getState().cells.find((c) => c.id === targetId)!)
         const ran = useStore.getState().cells.find((c) => c.id === targetId)!
         if (ran.status === 'error') {
           r.status = 'error'
@@ -356,7 +384,7 @@ async function runStress(stressCell: Cell): Promise<StressResult[]> {
       await queryArrow(`CREATE OR REPLACE TABLE "${input}" AS SELECT * FROM "${bak}"`)
       await queryArrow(`DROP TABLE IF EXISTS "${bak}"`)
       const t = useStore.getState().cells.find((c) => c.id === targetId)
-      if (t) await executeCell(t)
+      if (t) await executeCellInner(t)
     } catch (err) {
       console.warn('Failed to restore after stress test', err)
     }
@@ -397,9 +425,10 @@ export async function runAllFresh(): Promise<void> {
   const { cells, setCellStatus } = useStore.getState()
   for (const c of cells) setCellStatus(c.id, 'stale')
 
+  logActivity('Run fresh: resetting engine & Python…', 'info')
   await resetEngine()
   await resetPython()
-  await reloadSources()
+  await withTask('Reloading source datasets', () => reloadSources())
   await refreshCatalog()
 
   const order = topoOrder(useStore.getState().cells)
@@ -417,6 +446,7 @@ export async function runAllFresh(): Promise<void> {
 
 /** Run every cell in document/topo order without resetting (in-session). */
 export async function runAll(): Promise<void> {
+  logActivity('Run all', 'info')
   const order = topoOrder(useStore.getState().cells)
   for (const id of order) {
     const c = useStore.getState().cells.find((x) => x.id === id)

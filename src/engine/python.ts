@@ -17,6 +17,7 @@
 
 import { loadCsvText, tableToCsv } from './duck'
 import { MODEL_SCRIPT, type ModelResult } from './model'
+import { logActivity } from '../state/activity'
 
 const PYODIDE_VERSION = 'v0.26.4'
 const PYODIDE_INDEX = `https://cdn.jsdelivr.net/pyodide/${PYODIDE_VERSION}/full/`
@@ -31,6 +32,7 @@ export function onPythonLoad(cb: (stage: string) => void): () => void {
   }
 }
 function notify(stage: string) {
+  if (stage !== 'Python ready') logActivity(stage, 'info')
   for (const l of loadListeners) l(stage)
 }
 

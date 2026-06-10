@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type DragEvent } from 'react'
 import { useStore } from '../../state/store'
 import { runCell, markStaleDownstream } from '../../engine/runtime'
 import type { Cell as CellT } from '../../types'
@@ -22,14 +22,18 @@ const TYPE_LABEL: Record<string, string> = {
   experiments: 'Experiments',
 }
 
+const DND_TYPE = 'text/wsds-cell'
+
 export function CellView({ cell }: { cell: CellT }) {
   const selectedCellId = useStore((s) => s.selectedCellId)
   const selectCell = useStore((s) => s.selectCell)
   const updateCell = useStore((s) => s.updateCell)
   const removeCell = useStore((s) => s.removeCell)
-  const moveCell = useStore((s) => s.moveCell)
+  const moveCellTo = useStore((s) => s.moveCellTo)
   const setCellStatus = useStore((s) => s.setCellStatus)
   const [mdEditing, setMdEditing] = useState(cell.code.trim() === '')
+  const [dropPos, setDropPos] = useState<'before' | 'after' | null>(null)
+  const [dragging, setDragging] = useState(false)
 
   const selected = selectedCellId === cell.id
   const lang = cell.type === 'sql' ? 'sql' : cell.type === 'python' ? 'python' : 'markdown'
@@ -51,13 +55,72 @@ export function CellView({ cell }: { cell: CellT }) {
     runCell(cell.id)
   }
 
+  function onDragOver(e: DragEvent) {
+    if (!e.dataTransfer.types.includes(DND_TYPE)) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    const rect = e.currentTarget.getBoundingClientRect()
+    setDropPos(e.clientY > rect.top + rect.height / 2 ? 'after' : 'before')
+  }
+  function onDragLeave(e: DragEvent) {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropPos(null)
+  }
+  function onDrop(e: DragEvent) {
+    if (!e.dataTransfer.types.includes(DND_TYPE)) return
+    e.preventDefault()
+    const draggedId = e.dataTransfer.getData(DND_TYPE)
+    setDropPos(null)
+    if (!draggedId || draggedId === cell.id) return
+    // Compute the drop position from the event (not React state, which can be
+    // stale if drop fires in the same tick as the last dragover).
+    const rect = e.currentTarget.getBoundingClientRect()
+    const after = e.clientY > rect.top + rect.height / 2
+    const cells = useStore.getState().cells
+    const fromIdx = cells.findIndex((c) => c.id === draggedId)
+    const overIdx = cells.findIndex((c) => c.id === cell.id)
+    if (fromIdx < 0 || overIdx < 0) return
+    let target = after ? overIdx + 1 : overIdx
+    if (fromIdx < target) target -= 1
+    moveCellTo(draggedId, target)
+  }
+
+  const cls = [
+    'cell',
+    selected ? 'selected' : '',
+    cell.status === 'running' ? 'running' : '',
+    dragging ? 'dragging' : '',
+    dropPos ? `drop-${dropPos}` : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
     <div
       id={`cell-${cell.id}`}
-      className={`cell ${selected ? 'selected' : ''}`}
+      className={cls}
       onClick={() => selectCell(cell.id)}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
     >
       <div className="cell-bar">
+        <span
+          className="cell-grip"
+          draggable
+          title="Drag to reorder"
+          onClick={(e) => e.stopPropagation()}
+          onDragStart={(e) => {
+            e.dataTransfer.setData(DND_TYPE, cell.id)
+            e.dataTransfer.effectAllowed = 'move'
+            setDragging(true)
+          }}
+          onDragEnd={() => {
+            setDragging(false)
+            setDropPos(null)
+          }}
+        >
+          ⠿
+        </span>
         <span className="cell-type">{TYPE_LABEL[cell.type]}</span>
         {(cell.type === 'sql' || cell.type === 'python') && (
           <input
@@ -91,12 +154,6 @@ export function CellView({ cell }: { cell: CellT }) {
             {mdEditing ? 'Done' : 'Edit'}
           </button>
         )}
-        <button className="btn sm ghost" title="Move up" onClick={(e) => { e.stopPropagation(); moveCell(cell.id, -1) }}>
-          ↑
-        </button>
-        <button className="btn sm ghost" title="Move down" onClick={(e) => { e.stopPropagation(); moveCell(cell.id, 1) }}>
-          ↓
-        </button>
         <button className="btn sm ghost" title="Delete" onClick={(e) => { e.stopPropagation(); removeCell(cell.id) }}>
           🗑
         </button>

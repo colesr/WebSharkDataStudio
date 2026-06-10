@@ -52,6 +52,7 @@ interface AppState {
   setCellOutput: (id: string, output: CellOutput | undefined) => void
   removeCell: (id: string) => void
   moveCell: (id: string, dir: -1 | 1) => void
+  moveCellTo: (id: string, toIndex: number) => void
   selectCell: (id: string | null) => void
 
   // catalog
@@ -175,6 +176,17 @@ export const useStore = create<AppState>((set, get) => ({
       if (idx < 0 || next < 0 || next >= s.cells.length) return s
       const cells = [...s.cells]
       ;[cells[idx], cells[next]] = [cells[next], cells[idx]]
+      return { cells, dirty: true }
+    }),
+
+  moveCellTo: (id, toIndex) =>
+    set((s) => {
+      const from = s.cells.findIndex((c) => c.id === id)
+      if (from < 0) return s
+      const cells = [...s.cells]
+      const [moved] = cells.splice(from, 1)
+      const clamped = Math.max(0, Math.min(cells.length, toIndex))
+      cells.splice(clamped, 0, moved)
       return { cells, dirty: true }
     }),
 

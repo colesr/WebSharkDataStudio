@@ -3,6 +3,7 @@ import { useStore } from '../../state/store'
 import { loadCsvText, loadBinaryFile, loadFromUrl, dropTable } from '../../engine/duck'
 import { registerCsvSource, registerUrlSource, unregisterSource } from '../../engine/sources'
 import { refreshCatalog } from '../../engine/runtime'
+import { withTask } from '../../state/activity'
 import type { TableMeta } from '../../types'
 
 export function Sidebar() {
@@ -27,23 +28,25 @@ function DataSources() {
     setBusy(true)
     try {
       for (const file of Array.from(files)) {
-        if (/\.csv$/i.test(file.name) || /\.tsv$/i.test(file.name)) {
-          const text = await file.text()
-          const name = await loadCsvText(file.name, text)
-          registerCsvSource(name, text, 'file')
-        } else {
-          const buf = new Uint8Array(await file.arrayBuffer())
-          await loadBinaryFile(file.name, buf)
-          // Binary sources aren't embedded as CSV; re-export to CSV for save.
-          const { tableToCsv } = await import('../../engine/duck')
-          const cleanName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_]/g, '_')
-          try {
-            const csv = await tableToCsv(cleanName)
-            registerCsvSource(cleanName, csv, 'file')
-          } catch {
-            /* leave unembedded */
+        await withTask(`Loading ${file.name}`, async () => {
+          if (/\.csv$/i.test(file.name) || /\.tsv$/i.test(file.name)) {
+            const text = await file.text()
+            const name = await loadCsvText(file.name, text)
+            registerCsvSource(name, text, 'file')
+          } else {
+            const buf = new Uint8Array(await file.arrayBuffer())
+            await loadBinaryFile(file.name, buf)
+            // Binary sources aren't embedded as CSV; re-export to CSV for save.
+            const { tableToCsv } = await import('../../engine/duck')
+            const cleanName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_]/g, '_')
+            try {
+              const csv = await tableToCsv(cleanName)
+              registerCsvSource(cleanName, csv, 'file')
+            } catch {
+              /* leave unembedded */
+            }
           }
-        }
+        })
       }
       await refreshCatalog()
     } catch (err) {
@@ -57,7 +60,7 @@ function DataSources() {
     if (!url.trim()) return
     setBusy(true)
     try {
-      const name = await loadFromUrl(url.trim())
+      const name = await withTask(`Fetching ${url.trim()}`, () => loadFromUrl(url.trim()))
       registerUrlSource(name, url.trim())
       await refreshCatalog()
       setUrl('')
