@@ -10,3 +10,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .idea
+
+# User-saved analyses (project files)
+*.wsds.json
+project/
+.commitmsg.tmp
