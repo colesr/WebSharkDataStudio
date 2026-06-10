@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useStore } from '../state/store'
 import { runAll, runAllFresh } from '../engine/runtime'
 import { saveProjectToFile, openProjectFromFile, clearAutosave } from '../engine/persistence'
+import { ShipStatus } from './ShipStatus'
 
 export function Toolbar() {
   const project = useStore((s) => s.project)
@@ -45,6 +46,8 @@ export function Toolbar() {
         title="Project name"
       />
       {dirty && <span style={{ color: 'var(--text-faint)', fontSize: 11 }}>● unsaved</span>}
+
+      <ShipStatus />
 
       <div className="spacer" />
 

@@ -92,6 +92,31 @@ button {
 .toolbar .spacer {
   flex: 1;
 }
+
+.ship-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 11px 4px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 6px;
+  transition: background 0.12s;
+}
+.ship-status:hover:not(:disabled) {
+  background: var(--bg-elev2);
+}
+.ship-status:disabled {
+  cursor: default;
+}
+.ship-status .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
 .toolbar .project-name {
   background: transparent;
   border: 1px solid transparent;
