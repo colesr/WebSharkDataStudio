@@ -11,7 +11,7 @@ import { useStore } from '../state/store'
 import type { ProjectFile } from '../types'
 import { listSources, setSources } from './sources'
 import { reloadSources } from './sources'
-import { refreshCatalog } from './runtime'
+import { refreshCatalog, rerenderViewCells } from './runtime'
 
 const STORAGE_KEY = 'wsds.autosave.v1'
 const PROJECT_VERSION = 1
@@ -52,6 +52,8 @@ export async function applyProjectFile(file: ProjectFile): Promise<void> {
   await resetEngine()
   await reloadSources()
   await refreshCatalog()
+  // Recompute chart/profile views so they reappear after open/restore.
+  await rerenderViewCells()
 }
 
 // ---- localStorage autosave ------------------------------------------------

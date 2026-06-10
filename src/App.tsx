@@ -4,7 +4,7 @@ import { Shell } from './components/Shell'
 import { ReportView } from './components/report/ReportView'
 import { loadCsvText } from './engine/duck'
 import { registerCsvSource, listSources } from './engine/sources'
-import { refreshCatalog } from './engine/runtime'
+import { refreshCatalog, rerenderViewCells } from './engine/runtime'
 import { restoreAutosave, autosave, hasAutosave } from './engine/persistence'
 import { SAMPLE_DATASETS } from './data/sampleData'
 
@@ -36,6 +36,8 @@ export function App() {
           await loadSamples(setBootMsg)
         }
         await refreshCatalog()
+        // Recompute chart/profile views (their outputs aren't persisted).
+        await rerenderViewCells()
         setBoot('ready')
       } catch (err) {
         console.error(err)

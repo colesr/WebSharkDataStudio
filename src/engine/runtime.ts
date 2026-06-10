@@ -112,6 +112,30 @@ export async function autoCheckContracts(
   }
 }
 
+/**
+ * Re-render "view" cells (charts + profiles) that have a complete config and
+ * whose source table exists. These outputs aren't persisted in the project, so
+ * after a reload or project-open they must be recomputed to reappear. They're
+ * cheap and read existing tables, so it's safe to run them automatically
+ * (unlike SQL/Python, which may be expensive and stay stale until run).
+ */
+export async function rerenderViewCells(): Promise<void> {
+  const { cells, tables } = useStore.getState()
+  for (const c of cells) {
+    const ready =
+      (c.type === 'chart' && c.chart?.table && tables[c.chart.table]) ||
+      (c.type === 'profile' && c.profileTarget && tables[c.profileTarget])
+    if (!ready) continue
+    const cell = useStore.getState().cells.find((x) => x.id === c.id)
+    if (!cell) continue
+    try {
+      await executeCell(cell)
+    } catch {
+      /* leave the cell's empty/error state */
+    }
+  }
+}
+
 export function markStaleDownstream(cellId: string): void {
   const { cells, setCellStatus } = useStore.getState()
   for (const id of downstreamOf(cells, cellId)) {
