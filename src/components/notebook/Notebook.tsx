@@ -48,6 +48,9 @@ export function Notebook() {
         <button className="btn sm" onClick={() => add('abtest')} title="A/B test: compare a metric across variants with significance + SRM">
           + A/B test
         </button>
+        <button className="btn sm" onClick={() => add('drift')} title="Drift monitor: compare a current dataset against a baseline (PSI)">
+          + Drift
+        </button>
         <button className="btn sm" onClick={() => add('experiments')} title="Compare all logged model runs">
           + Experiments
         </button>

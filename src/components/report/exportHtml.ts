@@ -15,6 +15,7 @@ import type { TableProfile } from '../../engine/profile'
 import type { StressResult } from '../../engine/stress'
 import type { ModelResult } from '../../engine/model'
 import type { ABResult } from '../../engine/abtest'
+import type { DriftResult } from '../../engine/drift'
 
 function esc(s: unknown): string {
   return String(s ?? '')
@@ -96,6 +97,30 @@ function cellHtml(cell: Cell, chartId: { n: number }, specs: string[]): string {
       <div class="tbl-wrap" style="margin-top:8px"><table class="tbl"><thead><tr><th>perturbation</th><th>${esc(
         pm.name,
       )}</th></tr></thead><tbody>${stress}</tbody></table></div></div>`
+  }
+  if (cell.type === 'drift' && cell.output?.drift) {
+    const r = cell.output.drift as DriftResult
+    const color = r.overall === 'ok' ? '#2a9d4a' : r.overall === 'warn' ? '#b8860b' : '#d1242f'
+    const rows = r.columns
+      .map((c) => {
+        const cc = c.status === 'ok' ? '#2a9d4a' : c.status === 'warn' ? '#b8860b' : '#d1242f'
+        const change =
+          c.kind === 'numeric' && c.meanShiftPct != null
+            ? `mean ${c.meanShiftPct >= 0 ? '+' : ''}${(c.meanShiftPct * 100).toFixed(1)}%`
+            : [
+                c.newCategories?.length ? `+new: ${c.newCategories.join(', ')}` : '',
+                c.missingCategories?.length ? `missing: ${c.missingCategories.join(', ')}` : '',
+              ]
+                .filter(Boolean)
+                .join('; ')
+        return `<tr><td><b>${esc(c.name)}</b> (${c.kind})</td><td style="color:${cc}">${c.psi.toFixed(
+          3,
+        )}</td><td>${esc(change)}</td></tr>`
+      })
+      .join('')
+    return `<div class="block"><div class="cap">Drift — ${esc(r.baseline)} → ${esc(r.current)}</div>
+      <div style="color:${color}">${r.overall === 'ok' ? '✓ stable' : r.overall === 'warn' ? '▲ moderate drift' : '✕ significant drift'} · ${r.driftedCount} column(s) drifted</div>
+      <div class="tbl-wrap" style="margin-top:8px"><table class="tbl"><thead><tr><th>column</th><th>PSI</th><th>change</th></tr></thead><tbody>${rows}</tbody></table></div></div>`
   }
   if (cell.type === 'abtest' && cell.output?.abtest) {
     const r = cell.output.abtest as ABResult

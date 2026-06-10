@@ -1,6 +1,7 @@
 import { useStore } from '../state/store'
 import type { ModelResult } from '../engine/model'
 import type { ABResult } from '../engine/abtest'
+import type { DriftResult } from '../engine/drift'
 
 // A single at-a-glance "is this analysis production-ready?" indicator covering
 // data contracts, trained models, AND A/B tests:
@@ -19,6 +20,7 @@ export function ShipStatus() {
   const contractTables = Object.keys(contracts).filter((t) => (contracts[t]?.length ?? 0) > 0)
   const modelCells = cells.filter((c) => c.type === 'model' && c.output?.model)
   const abCells = cells.filter((c) => c.type === 'abtest' && c.output?.abtest)
+  const driftCells = cells.filter((c) => c.type === 'drift' && c.output?.drift)
 
   let contractIssues = 0
   let unchecked = 0
@@ -54,8 +56,20 @@ export function ShipStatus() {
     }
   }
 
-  const hasChecks = contractTables.length > 0 || modelCells.length > 0 || abCells.length > 0
-  const issues = contractIssues + modelIssues + abIssues
+  // A drift cell with significant drift is a production red flag.
+  let driftIssues = 0
+  let firstFailingDrift: string | null = null
+  for (const c of driftCells) {
+    const r = c.output!.drift as DriftResult
+    if (r.overall === 'drift') {
+      driftIssues++
+      if (!firstFailingDrift) firstFailingDrift = c.id
+    }
+  }
+
+  const hasChecks =
+    contractTables.length > 0 || modelCells.length > 0 || abCells.length > 0 || driftCells.length > 0
+  const issues = contractIssues + modelIssues + abIssues + driftIssues
 
   let color = 'var(--text-faint)'
   let icon = '○'
@@ -80,8 +94,8 @@ export function ShipStatus() {
     if (firstFailingTable) {
       selectTable(firstFailingTable)
       setInspectorTab('contracts')
-    } else if (firstFailingModel || firstFailingAB) {
-      const id = firstFailingModel || firstFailingAB!
+    } else if (firstFailingModel || firstFailingAB || firstFailingDrift) {
+      const id = firstFailingModel || firstFailingAB || firstFailingDrift!
       selectCell(id)
       document.getElementById(`cell-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     } else if (contractTables[0]) {
@@ -94,6 +108,7 @@ export function ShipStatus() {
   if (contractTables.length) parts.push(`${contractTables.length} contract${contractTables.length === 1 ? '' : 's'}`)
   if (modelCells.length) parts.push(`${modelCells.length} model${modelCells.length === 1 ? '' : 's'}`)
   if (abCells.length) parts.push(`${abCells.length} A/B test${abCells.length === 1 ? '' : 's'}`)
+  if (driftCells.length) parts.push(`${driftCells.length} drift check${driftCells.length === 1 ? '' : 's'}`)
 
   return (
     <button

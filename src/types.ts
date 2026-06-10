@@ -12,6 +12,7 @@ export type CellType =
   | 'model'
   | 'experiments'
   | 'abtest'
+  | 'drift'
 
 export type CellStatus = 'idle' | 'stale' | 'running' | 'ok' | 'error'
 
@@ -42,6 +43,8 @@ export interface CellOutput {
   model?: unknown
   /** ABResult for abtest cells (see engine/abtest.ts). */
   abtest?: unknown
+  /** DriftResult for drift cells (see engine/drift.ts). */
+  drift?: unknown
   /** Error message, if the run failed. */
   error?: string
   /** Wall-clock duration of the last run, ms. */
@@ -79,6 +82,13 @@ export interface ABSpec {
   alpha?: number
 }
 
+export interface DriftSpec {
+  baseline?: string
+  current?: string
+  /** Restrict to these columns; empty/undefined ⇒ all shared columns. */
+  columns?: string[]
+}
+
 export interface Cell {
   id: string
   type: CellType
@@ -96,6 +106,8 @@ export interface Cell {
   model?: ModelSpec
   /** A/B test configuration for abtest cells. */
   abtest?: ABSpec
+  /** Drift-monitor configuration for drift cells. */
+  drift?: DriftSpec
   status: CellStatus
   output?: CellOutput
   /** Whether the editor is collapsed. */

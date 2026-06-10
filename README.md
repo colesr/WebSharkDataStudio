@@ -117,16 +117,26 @@ plus a **sample-ratio-mismatch (SRM)** chi-square check that flags broken
 randomization/logging before you trust anything. An SRM mismatch turns the
 ship-ready banner red.
 
+## Drift monitoring
+
+The **Drift** cell compares a **current** dataset against a **baseline**, column by
+column, to catch silent distribution shift before it breaks a model or report.
+Each shared column gets a **PSI** (population stability index) score — <0.10
+stable, 0.10–0.25 moderate, >0.25 significant — plus null-rate change, mean shift
+and a KS statistic (numeric), and new/missing categories (categorical). Columns
+are sorted by severity; an overall roll-up rates the dataset. Significant drift
+turns the ship-ready banner red. Pure client-side (DuckDB + TS, no Pyodide).
+
 ## Ship-ready at a glance
 
 The toolbar shows one colored pill that summarizes whether the whole analysis is
 production-ready: **green** when every data contract passes, every model beats
-its baseline, and no A/B test has a sample-ratio mismatch; **red** (with a count)
-when something fails; **grey** when there's nothing to check yet. Click it to jump
-straight to the problem.
+its baseline, no A/B test has a sample-ratio mismatch, and no dataset shows
+significant drift; **red** (with a count) when something fails; **grey** when
+there's nothing to check yet. Click it to jump straight to the problem.
 
 ## Roadmap
 
 The cell + DAG + shared-data-layer core is built so later workflows slot in as
-new cell types / panels: experiment tracking, A/B-test statistics, drift
-monitoring, and LLM/RAG evaluation harnesses.
+new cell types / panels — e.g. LLM/RAG evaluation harnesses and richer pipeline
+orchestration.

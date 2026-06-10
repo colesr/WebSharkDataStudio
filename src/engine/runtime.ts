@@ -25,6 +25,7 @@ import { reloadSources, listSources } from './sources'
 import { STRESS_ATTACKS, type StressResult } from './stress'
 import { evaluateContract, summarize } from './contracts'
 import { runABTest } from './abtest'
+import { runDrift } from './drift'
 import { withTask, logActivity } from '../state/activity'
 
 // Forward Python load progress into the store for the loading indicator.
@@ -164,6 +165,10 @@ function cellLabel(cell: Cell): string | null {
       return cell.abtest?.variantCol && cell.abtest?.metricCol
         ? `A/B test · ${cell.abtest.metricCol} by ${cell.abtest.variantCol}`
         : null
+    case 'drift':
+      return cell.drift?.baseline && cell.drift?.current
+        ? `Drift · ${cell.drift.baseline} → ${cell.drift.current}`
+        : null
     default:
       return null
   }
@@ -265,6 +270,18 @@ async function executeCellInner(cell: Cell): Promise<void> {
       }
       const result = await runABTest(spec)
       setCellOutput(cell.id, { abtest: result, durationMs: performance.now() - t0 })
+      setCellStatus(cell.id, 'ok')
+      return
+    }
+
+    if (cell.type === 'drift') {
+      const spec = cell.drift
+      if (!spec?.baseline || !spec.current) {
+        setCellStatus(cell.id, 'idle')
+        return
+      }
+      const result = await runDrift(spec)
+      setCellOutput(cell.id, { drift: result, durationMs: performance.now() - t0 })
       setCellStatus(cell.id, 'ok')
       return
     }
